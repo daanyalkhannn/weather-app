@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weather App</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; padding: 0 16px; }
+    input, button { padding: 8px; margin: 4px 0; width: 100%; box-sizing: border-box; }
+    #result { margin-top: 16px; font-size: 1.1em; }
+  </style>
+</head>
+<body>
+  <h2>Weather App</h2>
+
+  <div id="auth">
+    <input id="user" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password (min 6)">
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="app" style="display:none">
+    <input id="city" placeholder="Enter a city, e.g. Mumbai">
+    <button onclick="getWeather()">Get weather</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <p id="result"></p>
+
+  <script>
+    let token = localStorage.getItem("token");
+    const show = (msg) => document.getElementById("result").textContent = msg;
+
+    function updateUI() {
+      document.getElementById("auth").style.display = token ? "none" : "block";
+      document.getElementById("app").style.display = token ? "block" : "none";
+    }
+
+    async function post(url) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: document.getElementById("user").value,
+          password: document.getElementById("pass").value
+        })
+      });
+      return res.json();
+    }
+
+    async function register() {
+      const d = await post("/api/register");
+      show(d.message || d.error);
+    }
+
+    async function login() {
+      const d = await post("/api/login");
+      if (d.token) {
+        token = d.token;
+        localStorage.setItem("token", token);   // remember login
+        show("Logged in");
+        updateUI();
+      } else show(d.error);
+    }
+
+    async function getWeather() {
+      const city = document.getElementById("city").value;
+      const res = await fetch("/api/weather?city=" + encodeURIComponent(city), {
+        headers: { Authorization: "Bearer " + token }   // send token with request
+      });
+      const d = await res.json();
+      if (d.error) return show(d.error);
+      show(`${d.city}, ${d.country}: ${d.temperature}°C, wind ${d.windspeed} km/h`);
+    }
+
+    function logout() {
+      localStorage.removeItem("token");
+      token = null;
+      show("");
+      updateUI();
+    }
+
+    updateUI();
+  </script>
+</body>
+</html>
